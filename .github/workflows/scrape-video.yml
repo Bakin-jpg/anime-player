@@ -1,0 +1,32 @@
+name: Scrape Video URL
+
+on:
+  workflow_dispatch:
+    inputs:
+      video_url:
+        description: 'URL video anime yang mau di-scrape'
+        required: true
+  repository_dispatch:
+    types: [scrape-video]
+
+jobs:
+  scrape:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v4
+    - uses: actions/setup-python@v5
+      with:
+        python-version: '3.11'
+    - run: |
+        pip install playwright beautifulsoup4
+        playwright install chromium
+        playwright install-deps chromium
+    - run: python scrape.py "${{ github.event.inputs.video_url || github.event.client_payload.video_url }}"
+    - run: |
+        git config --local user.email "action@github.com"
+        git config --local user.name "GitHub Action"
+        cp result.json latest-result.json
+        git add latest-result.json
+        git diff --quiet && git diff --staged --quiet || git commit -m "Update scrape result"
+        git push || echo "No changes to push"
+      continue-on-error: true
