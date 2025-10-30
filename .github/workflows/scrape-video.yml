@@ -9,24 +9,47 @@ on:
   repository_dispatch:
     types: [scrape-video]
 
+# ======================================================================
+# INI DIA KUNCINYA! BAGIAN PALING PENTING YANG SAYA LUPA TAMBAHKAN
+# Baris ini memberi izin kepada robot untuk menulis file ke repository.
+permissions:
+  contents: write
+# ======================================================================
+
 jobs:
   scrape:
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@v4
-    - uses: actions/setup-python@v5
+    - name: Ambil kode dari repository
+      uses: actions/checkout@v4
+
+    - name: Siapkan Python
+      uses: actions/setup-python@v5
       with:
         python-version: '3.11'
-    - run: |
+
+    - name: Install semua alat yang dibutuhkan
+      run: |
         pip install playwright beautifulsoup4
         playwright install chromium
         playwright install-deps chromium
-    - run: python scrape.py "${{ github.event.inputs.video_url || github.event.client_payload.video_url }}"
-    - run: |
+      
+    - name: Jalankan scraper
+      run: python scrape.py "${{ github.event.inputs.video_url || github.event.client_payload.video_url }}"
+
+    - name: Simpan hasil ke repository
+      run: |
+        # Konfigurasi identitas si robot
         git config --local user.email "action@github.com"
         git config --local user.name "GitHub Action"
+        
+        # Copy hasil scrape ke file baru
         cp result.json latest-result.json
+        
+        # Tambahkan file baru ke daftar arsip
         git add latest-result.json
+        
+        # Buat catatan arsip & simpan (commit & push)
         git diff --quiet && git diff --staged --quiet || git commit -m "Update scrape result"
-        git push || echo "No changes to push"
+        git push || echo "Tidak ada perubahan untuk di-push"
       continue-on-error: true
